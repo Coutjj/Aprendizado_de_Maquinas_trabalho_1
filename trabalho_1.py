@@ -3,24 +3,17 @@ from matplotlib import pyplot as plt
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.preprocessing import LabelBinarizer, MinMaxScaler
 from sklearn.model_selection import train_test_split, cross_val_score
+from sklearn.compose import ColumnTransformer
 
 
 conjunto_treino_df = pd.read_csv(
     "eel891-202002-trabalho-1/conjunto_de_treinamento.csv"
 )
 
-print("Imprime conjunto de dados de treino antes do embaralhamento\n")
-print(conjunto_treino_df)
-
 conjunto_treino_df = conjunto_treino_df.sample(frac=1, random_state=1234)
-print("Imprime dados apos embaralhamento\n")
-print(conjunto_treino_df)
 
-# print("Tabela de treinamento transposta")
-# print(conjunto_treino_df.T)
-
-print("\nImprimir tipos de dados\n")
-print(conjunto_treino_df.dtypes)
+#print("\nImprimir tipos de dados\n")
+#print(conjunto_treino_df.dtypes)
 
 variaveis_categoricas = [
     linha for linha in conjunto_treino_df.columns
@@ -46,7 +39,6 @@ for var_categorica in variaveis_categoricas:
         + str(len(conjunto_treino_df[var_categorica].unique()))
     )
 
-print(len(conjunto_treino_df[conjunto_treino_df['vinculo_formal_com_empresa'] == 'Y'].index))
 # forma_envio_solicitacao --> nao ordinal com 3 categorias --> irrelevante
 # sexo --> nao ordinal com 4 categorias (M, F, N, Vazio) --> (0, 1, 2)
 # estado_onde_nasceu --> nao ordinal com 28 categorias --> (norte, nordeste, centro-oeste, sudeste, sul) (0, 1, 2, 3, 4)
@@ -70,7 +62,7 @@ conjunto_treino_df = conjunto_treino_df.drop([
     'possui_telefone_celular'
 ], axis=1)
 
-#print(conjunto_treino_df.T)
+# print(conjunto_treino_df.T)
 
 print("\nTrocando campo de Vazio para N na coluina sexo\n")
 
@@ -128,7 +120,13 @@ conjunto_treino_df = pd.get_dummies(
     prefix='regiao'
 )
 
-print(conjunto_treino_df)
+conjunto_treino_df = pd.get_dummies(
+    conjunto_treino_df,
+    columns=['produto_solicitado'],
+    prefix='produto_solicitado'
+)
+
+#print(conjunto_treino_df)
 
 print('Visualizando dados')
 
@@ -146,9 +144,10 @@ print('\nVerificar o valor médio de cada atributo em cada classe:\n')
 
 print(conjunto_treino_df.groupby(['inadimplente']).mean().T)
 
-conjunto_treino_df = conjunto_treino_df[conjunto_treino_df['renda_mensal_regular'] < 5000]
+conjunto_treino_df = conjunto_treino_df[conjunto_treino_df['renda_mensal_regular'] < 1000]
 conjunto_treino_df = conjunto_treino_df[conjunto_treino_df['renda_extra'] < 1000]
 conjunto_treino_df = conjunto_treino_df[conjunto_treino_df['valor_patrimonio_pessoal'] < 30000]
+
 print(conjunto_treino_df)
 
 # cores = [
@@ -171,58 +170,83 @@ conjunto_treino_df.dropna(inplace=True)
 
 atributos_selecionados = [
     'inadimplente',
-    #'id_solicitante',
-    #'produto_solicitado',
-    #'tipo_endereco',
+    # 'id_solicitante',
+    # 'produto_solicitado',
+    # 'tipo_endereco',
     'idade',
-    'estado_civil',
-    #'qtde_dependentes',
-    #'grau_instrucao',
-    #'nacionalidade',
-    #'tipo_residencia',
-    #'meses_na_residencia',
-    #'possui_email',
+    # 'estado_civil',
+    # 'qtde_dependentes',
+    # 'grau_instrucao',
+    # 'nacionalidade',
+    # 'tipo_residencia',
+    'meses_na_residencia',
+    # 'possui_email',
     'renda_mensal_regular',
-    #'renda_extra',
-    #'possui_cartao_visa',
-    #'possui_cartao_mastercard',
-    #'possui_cartao_diners',
-    #'possui_cartao_amex',
-    #'possui_outros_cartoes',
-    #'possui_telefone_trabalho',
-    #'qtde_contas_bancarias',
-    #'qtde_contas_bancarias_especiais',
-    #'valor_patrimonio_pessoal',
-    #'possui_carro',
-    #'vinculo_formal_com_empresa',
-    #'meses_no_trabalho',
-    #'profissao',
-    #'ocupacao',
-    #'profissao_companheiro',
-    #'grau_instrucao_companheiro',
-    #'local_onde_reside',
-    #'local_onde_trabalha',
-    #'sexo_F',
-    #'sexo_M',
-    #'sexo_N',
-    #'regiao_centro-oeste',
-    #'regiao_nordeste',
-    #'regiao_norte',
-    #'regiao_sudeste',
-    #'regiao_sul'
+    # 'renda_extra',
+    # 'possui_cartao_visa',
+    # 'possui_cartao_mastercard',
+    # 'possui_cartao_diners',
+    # 'possui_cartao_amex',
+    # 'possui_outros_cartoes',
+    # 'possui_telefone_trabalho',
+    # 'qtde_contas_bancarias',
+    # 'qtde_contas_bancarias_especiais',
+    # 'valor_patrimonio_pessoal',
+    # 'possui_carro',
+    # 'vinculo_formal_com_empresa',
+    # 'meses_no_trabalho',
+    # 'profissao',
+    # 'ocupacao',
+    # 'profissao_companheiro',
+    # 'grau_instrucao_companheiro',
+    # 'local_onde_reside',
+    # 'local_onde_trabalha',
+    # 'sexo_F',
+    # 'sexo_M',
+    # 'sexo_N',
+    # 'regiao_centro-oeste',
+    # 'regiao_nordeste',
+    # 'regiao_norte',
+    # 'regiao_sudeste',
+    # 'regiao_sul',
+    # 'produto_solicitado_1',
+    # 'produto_solicitado_2',
+    # 'produto_solicitado_7',
+    # 'grau_instrucao',
+    # 'tipo_residencia'
 ]
+
+conjunto_treino_df = conjunto_treino_df[atributos_selecionados]
+
+dados_treino = conjunto_treino_df.loc[
+    :, conjunto_treino_df.columns != 'inadimplente']
+
+dados_alvo = conjunto_treino_df.loc[
+    :, conjunto_treino_df.columns == 'inadimplente'].values
+
+dados_alvo = dados_alvo.ravel()
 
 # Ajustando escala
 
-ajustador_de_escala = MinMaxScaler()
-conjunto_treino_df = conjunto_treino_df[atributos_selecionados]
+# colunas_escala_padrao = [
+#     valor for valor in dados_treino.columns.values.tolist()
+#     if valor not in ['renda_mensal_regular', 'idade', 'qtde_dependentes']
+# ]
 
-conjunto_treino_df = ajustador_de_escala.fit_transform(conjunto_treino_df)
+# print(colunas_escala_padrao)
 
-conjunto_treino_df = pd.DataFrame(
-    conjunto_treino_df,
-    columns=atributos_selecionados
+scale = ColumnTransformer(
+    transformers=[
+        #('mm', MinMaxScaler(), colunas_escala_padrao),
+        ('mm2', MinMaxScaler((0, 2)), ['renda_mensal_regular']),
+        #('mm3', MinMaxScaler((0, 2)), ['idade'])
+    ],
+    remainder=MinMaxScaler((0, 1))
 )
+
+dados_treino = scale.fit_transform(dados_treino)
+print(dados_treino)
+
 
 print('\nVerificar o valor médio de cada atributo em cada classe:\n')
 
@@ -247,34 +271,26 @@ scatter_matrix = pd.plotting.scatter_matrix(
 )
 
 
-# figura = plt.figure(figsize=(15, 12))
+figura = plt.figure(figsize=(15, 12))
 
-# # criar um grafico 3D dentro da figura
+# criar um grafico 3D dentro da figura
 
-# grafico = figura.add_subplot(111, projection='3d')
+grafico = figura.add_subplot(111, projection='3d')
 
-# grafico.scatter(
-#     atributos['renda_mensal_regular'],
-#     atributos['idade'],
-#     atributos['meses_na_residencia'],
-#     c=cores,
-#     marker='o',
-#     s=10,
-#     alpha=1.0
-# )
+grafico.scatter(
+    atributos['renda_mensal_regular'],
+    atributos['idade'],
+    atributos['meses_na_residencia'],
+    c=cores,
+    marker='o',
+    s=10,
+    alpha=1.0
+)
 
 
-for ax in scatter_matrix.ravel():
-    ax.set_xlabel(ax.get_xlabel(), fontsize=7)
-    ax.set_ylabel(ax.get_ylabel(), fontsize=7)
-
-dados_treino = conjunto_treino_df.loc[
-    :, conjunto_treino_df.columns != 'inadimplente'].values
-
-dados_alvo = conjunto_treino_df.loc[
-    :, conjunto_treino_df.columns == 'inadimplente'].values
-
-dados_alvo = dados_alvo.ravel()
+# for ax in scatter_matrix.ravel():
+#     ax.set_xlabel(ax.get_xlabel(), fontsize=7)
+#     ax.set_ylabel(ax.get_ylabel(), fontsize=7)
 
 
 # dados_treino, dados_teste, resposta_treino, resposta_teste = train_test_split(
@@ -290,24 +306,12 @@ dados_alvo = dados_alvo.ravel()
 #     weights='distance'
 # )
 
-# classificador.fit(dados_treino, resposta_treino)
-
-# resposta = classificador.predict(dados_teste)
-
-# total = len(dados_teste)
-# acertos = sum(resposta == resposta_teste)
-# erros = sum(resposta != resposta_teste)
-
-# print("Total de amostras: ", total)
-# print("Respostas corretas:", acertos)
-# print("Respostas erradas: ", erros)
-
-for k in range(1, 50, 2):
+for num_vizinhos in range(1, 50, 2):
 
     classificador = KNeighborsClassifier(
-        n_neighbors=k,
+        n_neighbors=num_vizinhos,
         weights='uniform',
-        p=1
+        p=2
     )
 
     scores = cross_val_score(
@@ -318,13 +322,15 @@ for k in range(1, 50, 2):
     )
 
     print(
-        'k = ' + str(k),
+        'nVizinhos = ' + str(num_vizinhos),
         'scores =', scores,
         'acurácia média = %6.1f' % (100*sum(scores)/5)
     )
 
 
-#plt.show()
+
+
+plt.show()
 
 # conjunto_teste_df = pd.read_csv('eel891-202002-trabalho-1/conjunto_de_teste.csv')
 
