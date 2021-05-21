@@ -4,6 +4,7 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.preprocessing import LabelBinarizer, MinMaxScaler
 from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.compose import ColumnTransformer
+from scipy.stats import pearsonr
 
 
 conjunto_treino_df = pd.read_csv(
@@ -16,12 +17,14 @@ conjunto_treino_df = conjunto_treino_df.sample(frac=1, random_state=1234)
 #print(conjunto_treino_df.dtypes)
 
 variaveis_categoricas = [
-    linha for linha in conjunto_treino_df.columns
-    if conjunto_treino_df[linha].dtype == 'object'
+    coluna for coluna in conjunto_treino_df.columns
+    if conjunto_treino_df[coluna].dtype == 'object'
 ]
 
 print("\nVariaveis categoricas\n")
 print(variaveis_categoricas)
+
+
 
 print('\nVerificar a quantidade de amostras de cada classe:\n')
 
@@ -238,19 +241,23 @@ dados_alvo = dados_alvo.ravel()
 scale = ColumnTransformer(
     transformers=[
         #('mm', MinMaxScaler(), colunas_escala_padrao),
-        ('mm2', MinMaxScaler((0, 2)), ['renda_mensal_regular']),
-        #('mm3', MinMaxScaler((0, 2)), ['idade'])
+        ('mm2', MinMaxScaler((0,1)), ["renda_mensal_regular"]),
+        ('mm3', MinMaxScaler((0, 1)), ['idade']),
     ],
     remainder=MinMaxScaler((0, 1))
 )
 
 dados_treino = scale.fit_transform(dados_treino)
+
+print("\nDados corretamente dimendionados\n")
 print(dados_treino)
 
 
 print('\nVerificar o valor médio de cada atributo em cada classe:\n')
 
 print(conjunto_treino_df.groupby(['inadimplente']).mean().T)
+
+print(dados_treino)
 
 cores = [
     'red' if valor else 'blue'
@@ -293,39 +300,89 @@ grafico.scatter(
 #     ax.set_ylabel(ax.get_ylabel(), fontsize=7)
 
 
-# dados_treino, dados_teste, resposta_treino, resposta_teste = train_test_split(
-#     dados_treino,
-#     dados_alvo,
-#     train_size=0.7
+dados_treino, dados_teste, resposta_treino, resposta_teste = train_test_split(
+    dados_treino,
+    dados_alvo,
+    train_size=0.7
+)
+
+
+classificador = KNeighborsClassifier(
+    n_neighbors=13,
+    p=2,
+    weights='uniform'
+)
+classificador = classificador.fit(dados_treino, resposta_treino)
+
+conjunto_teste_df = pd.read_csv("./eel891-202002-trabalho-1/conjunto_de_teste.csv")
+
+atributos_selecionados = [
+    'idade',
+    'meses_na_residencia',
+    'renda_mensal_regular',
+]
+
+# conjunto_teste_df['meses_na_residencia'] = conjunto_teste_df['meses_na_residencia'].replace(
+#     r'^\s*$', '0', regex=True
 # )
 
-
-# classificador = KNeighborsClassifier(
-#     n_neighbors=3,
-#     p=2,
-#     weights='distance'
+# conjunto_teste_df['renda_mensal_regular'] = conjunto_teste_df['renda_mensal_regular'].replace(
+#     r'^\s*$', '0', regex=True
 # )
 
-for num_vizinhos in range(1, 50, 2):
+# conjunto_teste_df['idade'] = conjunto_teste_df['idade'].replace(
+#     r'^\s*$', '0', regex=True
+# )
 
-    classificador = KNeighborsClassifier(
-        n_neighbors=num_vizinhos,
-        weights='uniform',
-        p=2
-    )
+conjunto_teste_df.fillna(0, inplace=True)
 
-    scores = cross_val_score(
-        classificador,
-        dados_treino,
-        dados_alvo,
-        cv=5
-    )
+# conjunto_teste_df.dropna(inplace=True)
 
-    print(
-        'nVizinhos = ' + str(num_vizinhos),
-        'scores =', scores,
-        'acurácia média = %6.1f' % (100*sum(scores)/5)
-    )
+id_solicitante = conjunto_teste_df['id_solicitante']
+print(id_solicitante)
+
+conjunto_teste_df = conjunto_teste_df[atributos_selecionados]
+
+print(conjunto_teste_df['renda_mensal_regular'].unique())
+# print(conjunto_treino_df['sexo'].unique())
+
+conjunto_teste_df = scale.fit_transform(conjunto_teste_df)
+
+# print(conjunto_teste_df)
+
+resposta = classificador.predict(conjunto_teste_df)
+resposta = pd.DataFrame(resposta, columns=['inadimplente'])
+print(resposta)
+resposta = pd.concat([id_solicitante, resposta], axis=1, join='inner')
+
+print("\nRespostas\n")
+print(resposta)
+
+resposta.to_csv('./respostas.csv', index=False)
+
+
+# conjunto_resposta_df = classificador.predict()
+
+# for num_vizinhos in range(1, 50, 2):
+
+#     classificador = KNeighborsClassifier(
+#         n_neighbors=num_vizinhos,
+#         weights='uniform',
+#         p=2
+#     )
+
+#     scores = cross_val_score(
+#         classificador,
+#         dados_treino,
+#         dados_alvo,
+#         cv=5
+#     )
+
+#     print(
+#         'nVizinhos = ' + str(num_vizinhos),
+#         'scores =', scores,
+#         'acurácia média = %6.1f' % (100*sum(scores)/5)
+#     )
 
 
 
