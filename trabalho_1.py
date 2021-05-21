@@ -1,20 +1,23 @@
 import pandas as pd
 from matplotlib import pyplot as plt
 from sklearn.neighbors import KNeighborsClassifier
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.gaussian_process import GaussianProcessClassifier
+from sklearn.naive_bayes import GaussianNB
+from sklearn.svm import SVC
 from sklearn.preprocessing import LabelBinarizer, MinMaxScaler
 from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.compose import ColumnTransformer
 from scipy.stats import pearsonr
 
 
+# Importando arquivo
 conjunto_treino_df = pd.read_csv(
     "eel891-202002-trabalho-1/conjunto_de_treinamento.csv"
 )
 
+# Embaralhando dados
 conjunto_treino_df = conjunto_treino_df.sample(frac=1, random_state=1234)
-
-#print("\nImprimir tipos de dados\n")
-#print(conjunto_treino_df.dtypes)
 
 variaveis_categoricas = [
     coluna for coluna in conjunto_treino_df.columns
@@ -24,14 +27,10 @@ variaveis_categoricas = [
 print("\nVariaveis categoricas\n")
 print(variaveis_categoricas)
 
-
-
 print('\nVerificar a quantidade de amostras de cada classe:\n')
-
 print(conjunto_treino_df['inadimplente'].value_counts())
 
 print('\nVerificar o valor médio de cada atributo em cada classe:\n')
-
 print(conjunto_treino_df.groupby(['inadimplente']).mean().T)
 
 print("\nVerificar cardinalidade para cada variavel categorica\n")
@@ -129,9 +128,8 @@ conjunto_treino_df = pd.get_dummies(
     prefix='produto_solicitado'
 )
 
-#print(conjunto_treino_df)
 
-print('Visualizando dados')
+print('\nVisualizando dados\n')
 
 print(
     '\nAplicar binarização simples nas variáveis que tenham'
@@ -147,27 +145,11 @@ print('\nVerificar o valor médio de cada atributo em cada classe:\n')
 
 print(conjunto_treino_df.groupby(['inadimplente']).mean().T)
 
-conjunto_treino_df = conjunto_treino_df[conjunto_treino_df['renda_mensal_regular'] < 1000]
+conjunto_treino_df = conjunto_treino_df[conjunto_treino_df['renda_mensal_regular'] < 10000]
 conjunto_treino_df = conjunto_treino_df[conjunto_treino_df['renda_extra'] < 1000]
 conjunto_treino_df = conjunto_treino_df[conjunto_treino_df['valor_patrimonio_pessoal'] < 30000]
 
 print(conjunto_treino_df)
-
-# cores = [
-#     'red' if valor else 'blue'
-#     for valor in conjunto_treino_df['inadimplente']
-# ]
-
-# grafico = conjunto_treino_df.plot.scatter(
-#     'meses_no_trabalho',
-#     'renda_mensal_regular',
-#     c=cores,
-#     s=10,
-#     marker='o',
-#     alpha=0.5
-# )
-
-# plt.show()
 
 conjunto_treino_df.dropna(inplace=True)
 
@@ -229,36 +211,27 @@ dados_alvo = conjunto_treino_df.loc[
 
 dados_alvo = dados_alvo.ravel()
 
-# Ajustando escala
-
-# colunas_escala_padrao = [
-#     valor for valor in dados_treino.columns.values.tolist()
-#     if valor not in ['renda_mensal_regular', 'idade', 'qtde_dependentes']
-# ]
-
-# print(colunas_escala_padrao)
+print('\nAjustando escala\n')
 
 scale = ColumnTransformer(
     transformers=[
-        #('mm', MinMaxScaler(), colunas_escala_padrao),
-        ('mm2', MinMaxScaler((0,1)), ["renda_mensal_regular"]),
+        ('mm2', MinMaxScaler((0, 1)), ["renda_mensal_regular"]),
         ('mm3', MinMaxScaler((0, 1)), ['idade']),
+        ('mm4', MinMaxScaler((0, 1)), ['meses_na_residencia']),
     ],
     remainder=MinMaxScaler((0, 1))
 )
 
 dados_treino = scale.fit_transform(dados_treino)
 
-print("\nDados corretamente dimendionados\n")
+print("\nDados corretamente dimensionados\n")
 print(dados_treino)
 
 
 print('\nVerificar o valor médio de cada atributo em cada classe:\n')
-
 print(conjunto_treino_df.groupby(['inadimplente']).mean().T)
 
-print(dados_treino)
-
+# Colorindo amostras com inadimplencia
 cores = [
     'red' if valor else 'blue'
     for valor in conjunto_treino_df['inadimplente']
@@ -291,29 +264,64 @@ grafico.scatter(
     c=cores,
     marker='o',
     s=10,
-    alpha=1.0
+    alpha=1.0,
 )
 
-
-# for ax in scatter_matrix.ravel():
-#     ax.set_xlabel(ax.get_xlabel(), fontsize=7)
-#     ax.set_ylabel(ax.get_ylabel(), fontsize=7)
-
-
-dados_treino, dados_teste, resposta_treino, resposta_teste = train_test_split(
-    dados_treino,
-    dados_alvo,
-    train_size=0.7
-)
+grafico.set_xlabel("renda_mensal_regular")
+grafico.set_ylabel("idade")
+grafico.set_zlabel("meses_na_residencia")
 
 
-classificador = KNeighborsClassifier(
-    n_neighbors=13,
-    p=2,
-    weights='uniform'
-)
-classificador = classificador.fit(dados_treino, resposta_treino)
+# dados_treino1, dados_teste, resposta_treino, resposta_teste = train_test_split(
+#     dados_treino,
+#     dados_alvo,
+#     train_size=0.7
+# )
 
+#Executando cross_val_score
+print('\nValidacao Cruzada\n')
+for num_vizinhos in range(-2, 4):
+
+    # classificador = KNeighborsClassifier(
+    #     n_neighbors=num_vizinhos,
+    #     weights='uniform',
+    #     p=2
+    # )
+
+    # classificador = RandomForestClassifier(max_depth=num_vizinhos)
+
+    # classificador = GaussianProcessClassifier(n_jobs=-1)
+    classificador = SVC(gamma=pow(10, 1), C=pow(10, num_vizinhos))
+    # classificador = GaussianNB(var_smoothing=pow(10, num_vizinhos))
+
+    scores = cross_val_score(
+        classificador,
+        dados_treino,
+        dados_alvo,
+        cv=5
+    )
+
+    print(
+        'nVizinhos = ' + str(num_vizinhos),
+        'scores =', scores,
+        'acurácia média = %6.1f' % (100*sum(scores)/5)
+    )
+
+
+# classificador = KNeighborsClassifier(
+#     n_neighbors=13,
+#     p=2,
+#     weights='uniform'
+# )
+
+# classificador = GaussianProcessClassifier(n_jobs=-1)
+
+classificador = SVC()
+
+classificador = classificador.fit(dados_treino, dados_alvo)
+
+
+# Importando CSV de teste
 conjunto_teste_df = pd.read_csv("./eel891-202002-trabalho-1/conjunto_de_teste.csv")
 
 atributos_selecionados = [
@@ -322,112 +330,29 @@ atributos_selecionados = [
     'renda_mensal_regular',
 ]
 
-# conjunto_teste_df['meses_na_residencia'] = conjunto_teste_df['meses_na_residencia'].replace(
-#     r'^\s*$', '0', regex=True
-# )
-
-# conjunto_teste_df['renda_mensal_regular'] = conjunto_teste_df['renda_mensal_regular'].replace(
-#     r'^\s*$', '0', regex=True
-# )
-
-# conjunto_teste_df['idade'] = conjunto_teste_df['idade'].replace(
-#     r'^\s*$', '0', regex=True
-# )
-
+# Marcando valores vazios como 0
 conjunto_teste_df.fillna(0, inplace=True)
 
-# conjunto_teste_df.dropna(inplace=True)
-
+# Salvando frame de ID
 id_solicitante = conjunto_teste_df['id_solicitante']
-print(id_solicitante)
 
 conjunto_teste_df = conjunto_teste_df[atributos_selecionados]
 
-print(conjunto_teste_df['renda_mensal_regular'].unique())
-# print(conjunto_treino_df['sexo'].unique())
-
+# Ajustando escala do conjunto de teste
 conjunto_teste_df = scale.fit_transform(conjunto_teste_df)
 
-# print(conjunto_teste_df)
-
+# realizandop predicao
 resposta = classificador.predict(conjunto_teste_df)
+
+# compondo dataframes
 resposta = pd.DataFrame(resposta, columns=['inadimplente'])
-print(resposta)
 resposta = pd.concat([id_solicitante, resposta], axis=1, join='inner')
 
 print("\nRespostas\n")
 print(resposta)
 
+# Arquivo de saida
 resposta.to_csv('./respostas.csv', index=False)
 
 
-# conjunto_resposta_df = classificador.predict()
-
-# for num_vizinhos in range(1, 50, 2):
-
-#     classificador = KNeighborsClassifier(
-#         n_neighbors=num_vizinhos,
-#         weights='uniform',
-#         p=2
-#     )
-
-#     scores = cross_val_score(
-#         classificador,
-#         dados_treino,
-#         dados_alvo,
-#         cv=5
-#     )
-
-#     print(
-#         'nVizinhos = ' + str(num_vizinhos),
-#         'scores =', scores,
-#         'acurácia média = %6.1f' % (100*sum(scores)/5)
-#     )
-
-
-
-
 plt.show()
-
-# conjunto_teste_df = pd.read_csv('eel891-202002-trabalho-1/conjunto_de_teste.csv')
-
-# conjunto_teste_df = conjunto_treino_df.drop([
-#     'forma_envio_solicitacao',
-#     'possui_telefone_residencial',
-#     'codigo_area_telefone_residencial',
-#     'estado_onde_trabalha',
-#     'possui_telefone_trabalho',
-#     'codigo_area_telefone_trabalho',
-#     'dia_vencimento',
-#     'possui_telefone_celular'
-# ], axis=1)
-
-# conjunto_treino_df['sexo'] = conjunto_treino_df['sexo'].replace(
-#     r'^\s*$', 'N', regex=True
-# )
-
-# conjunto_teste_df = pd.get_dummies(
-#     conjunto_treino_df,
-#     columns=['sexo'],
-#     prefix='sexo'
-# )
-
-# conjunto_teste_df['regiao'] = conjunto_teste_df['estado_onde_reside'].map(dict_estados_regioes)
-
-# conjunto_teste_df = conjunto_teste_df.drop([
-#     'estado_onde_nasceu',
-#     'estado_onde_reside',
-# ], axis=1)
-
-# conjunto_teste_df = pd.get_dummies(
-#     conjunto_teste_df,
-#     columns=['regiao'],
-#     prefix='regiao'
-# )
-
-# binarizador = LabelBinarizer()
-# campo = 'vinculo_formal_com_empresa'
-# conjunto_teste_df[campo] = binarizador.fit_transform(conjunto_teste_df[campo])
-
-
-# conjunto_resposta.df = classificador.predict(conjunto_teste_df)
