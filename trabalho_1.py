@@ -1,3 +1,4 @@
+from typing import Tuple
 import pandas as pd
 from matplotlib import pyplot as plt
 from sklearn.neighbors import KNeighborsClassifier
@@ -17,7 +18,7 @@ conjunto_treino_df = pd.read_csv(
 )
 
 # Embaralhando dados
-conjunto_treino_df = conjunto_treino_df.sample(frac=1, random_state=1234)
+conjunto_treino_df = conjunto_treino_df.sample(frac=1, random_state=5)
 
 variaveis_categoricas = [
     coluna for coluna in conjunto_treino_df.columns
@@ -149,8 +150,6 @@ conjunto_treino_df = conjunto_treino_df[conjunto_treino_df['renda_mensal_regular
 conjunto_treino_df = conjunto_treino_df[conjunto_treino_df['renda_extra'] < 1000]
 conjunto_treino_df = conjunto_treino_df[conjunto_treino_df['valor_patrimonio_pessoal'] < 30000]
 
-print(conjunto_treino_df)
-
 conjunto_treino_df.dropna(inplace=True)
 
 atributos_selecionados = [
@@ -272,12 +271,6 @@ grafico.set_ylabel("idade")
 grafico.set_zlabel("meses_na_residencia")
 
 
-# dados_treino1, dados_teste, resposta_treino, resposta_teste = train_test_split(
-#     dados_treino,
-#     dados_alvo,
-#     train_size=0.7
-# )
-
 #Executando cross_val_score
 print('\nValidacao Cruzada\n')
 for num_vizinhos in range(-2, 4):
@@ -302,21 +295,13 @@ for num_vizinhos in range(-2, 4):
     )
 
     print(
-        'nVizinhos = ' + str(num_vizinhos),
+        'C = ' + str(num_vizinhos),
         'scores =', scores,
         'acurácia média = %6.1f' % (100*sum(scores)/5)
     )
 
 
-# classificador = KNeighborsClassifier(
-#     n_neighbors=13,
-#     p=2,
-#     weights='uniform'
-# )
-
-# classificador = GaussianProcessClassifier(n_jobs=-1)
-
-classificador = SVC()
+classificador = SVC(gamma=10, C=pow(10, -1))
 
 classificador = classificador.fit(dados_treino, dados_alvo)
 
